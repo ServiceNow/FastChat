@@ -61,6 +61,7 @@ class Judge:
     prompt_template: dict
     ref_based: bool = False
     multi_turn: bool = False
+    multilingual: bool = False
 
 
 @dataclasses.dataclass
@@ -141,6 +142,10 @@ def run_judge_single(question, answer, judge, ref_answer, multi_turn=False):
             kwargs["ref_answer_2"] = ref_answer["choices"][0]["turns"][1]
 
     if multi_turn:
+        if judge.multilingual:
+            system_prompt = judge.prompt_template["system_prompt"].format(lang=question["lang"], lang1=question["lang"])
+        else:
+            system_prompt = judge.prompt_template["system_prompt"]
         user_prompt = judge.prompt_template["prompt_template"].format(
             question_1=question["turns"][0],
             question_2=question["turns"][1],
@@ -149,15 +154,25 @@ def run_judge_single(question, answer, judge, ref_answer, multi_turn=False):
             **kwargs,
         )
     else:
-        user_prompt = judge.prompt_template["prompt_template"].format(
-            question=question["turns"][0],
-            answer=answer["choices"][0]["turns"][0],
-            **kwargs,
-        )
+        system_prompt = judge.prompt_template["system_prompt"]
+        if judge.multilingual:
+            user_prompt = judge.prompt_template["prompt_template"].format(
+                lang=question["lang"], 
+                lang1=question["lang"],
+                question=question["turns"][0],
+                answer=answer["choices"][0]["turns"][0],
+                **kwargs,
+            )
+        else:
+            user_prompt = judge.prompt_template["prompt_template"].format(
+                question=question["turns"][0],
+                answer=answer["choices"][0]["turns"][0],
+                **kwargs,
+            )
 
     rating = -1
 
-    system_prompt = judge.prompt_template["system_prompt"]
+
     conv = get_conversation_template(model)
     conv.set_system_message(system_prompt)
     conv.append_message(conv.roles[0], user_prompt)
@@ -235,13 +250,17 @@ def play_a_match_single(match: MatchSingle, output_file: str):
 def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=False):
     kwargs = {}
     model = judge.model_name
+    
     if ref_answer is not None:
         kwargs["ref_answer_1"] = ref_answer["choices"][0]["turns"][0]
         if multi_turn:
             kwargs["ref_answer_2"] = ref_answer["choices"][0]["turns"][1]
 
     if multi_turn:
-        system_prompt = judge.prompt_template["system_prompt"]
+        if judge.multilingual:
+            system_prompt = judge.prompt_template["system_prompt"].format(lang=question["lang"], lang1=question["lang"])
+        else:
+            system_prompt = judge.prompt_template["system_prompt"]
         user_prompt = judge.prompt_template["prompt_template"].format(
             question_1=question["turns"][0],
             question_2=question["turns"][1],
@@ -252,14 +271,16 @@ def run_judge_pair(question, answer_a, answer_b, judge, ref_answer, multi_turn=F
             **kwargs,
         )
     else:
-        system_prompt = judge.prompt_template["system_prompt"]
+        if judge.multilingual:
+            system_prompt = judge.prompt_template["system_prompt"].format(lang=question["lang"], lang1=question["lang"])
+        else:
+            system_prompt = judge.prompt_template["system_prompt"]
         user_prompt = judge.prompt_template["prompt_template"].format(
             question=question["turns"][0],
             answer_a=answer_a["choices"][0]["turns"][0],
             answer_b=answer_b["choices"][0]["turns"][0],
             **kwargs,
         )
-
     winner = "error"
 
     conv = get_conversation_template(model)

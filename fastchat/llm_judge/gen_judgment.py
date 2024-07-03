@@ -137,6 +137,7 @@ def make_match_single(
 def make_judge_pairwise(judge_model, judge_prompts):
     judges = {}
     judges["default"] = Judge(judge_model, judge_prompts["pair-v2"])
+    judges["safety"] = Judge(judge_model, judge_prompts["pair-harmless-v2"])
     judges["math"] = Judge(judge_model, judge_prompts["pair-math-v1"], ref_based=True)
     judges["default-mt"] = Judge(
         judge_model, judge_prompts["pair-v2-multi-turn"], multi_turn=True
@@ -149,10 +150,28 @@ def make_judge_pairwise(judge_model, judge_prompts):
     )
     return judges
 
+def make_judge_pairwise_multilingual(judge_model, judge_prompts):
+    judges = {}
+    judges["default"] = Judge(judge_model, judge_prompts["pair-v2"], multilingual=True)
+    judges["safety"] = Judge(judge_model, judge_prompts["pair-harmless-v2"], multilingual=True)
+    judges["math"] = Judge(judge_model, judge_prompts["pair-math-v1"], ref_based=True, multilingual=True)
+    judges["default-mt"] = Judge(
+        judge_model, judge_prompts["pair-v2-multi-turn"], multi_turn=True, multilingual=True
+    )
+    judges["math-mt"] = Judge(
+        judge_model,
+        judge_prompts["pair-math-v1-multi-turn"],
+        ref_based=True,
+        multi_turn=True,
+        multilingual=True
+    )
+    return judges
+
 
 def make_judge_single(judge_model, judge_prompts):
     judges = {}
     judges["default"] = Judge(judge_model, judge_prompts["single-v1"])
+    judges["safety"] = Judge(judge_model, judge_prompts["pair-harmless-v2"])
     judges["math"] = Judge(judge_model, judge_prompts["single-math-v1"], ref_based=True)
     judges["default-mt"] = Judge(
         judge_model, judge_prompts["single-v1-multi-turn"], multi_turn=True
@@ -162,6 +181,23 @@ def make_judge_single(judge_model, judge_prompts):
         judge_prompts["single-math-v1-multi-turn"],
         ref_based=True,
         multi_turn=True,
+    )
+    return judges
+
+def make_judge_single_multilingual(judge_model, judge_prompts):
+    judges = {}
+    judges["default"] = Judge(judge_model, judge_prompts["single-v1"], multilingual=True)
+    judges["safety"] = Judge(judge_model, judge_prompts["pair-harmless-v2"], multilingual=True)
+    judges["math"] = Judge(judge_model, judge_prompts["single-math-v1"], ref_based=True, multilingual=True)
+    judges["default-mt"] = Judge(
+        judge_model, judge_prompts["single-v1-multi-turn"], multi_turn=True, multilingual=True
+    )
+    judges["math-mt"] = Judge(
+        judge_model,
+        judge_prompts["single-math-v1-multi-turn"],
+        ref_based=True,
+        multi_turn=True,
+        multilingual=True
     )
     return judges
 
@@ -207,6 +243,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--first-n", type=int, help="A debug option. Only run the first `n` judgments."
     )
+    parser.add_argument('--multilingual', action='store_true',  help='Enable Multilingual')
     args = parser.parse_args()
 
     question_file = f"data/{args.bench_name}/question.jsonl"
@@ -232,7 +269,11 @@ if __name__ == "__main__":
         models = args.model_list
 
     if args.mode == "single":
-        judges = make_judge_single(args.judge_model, judge_prompts)
+        if args.multilingual:
+            assert args.judge_file.endswith("judge_prompts_multilingual.jsonl")
+            judges = make_judge_single_multilingual(args.judge_model, judge_prompts)
+        else:
+            judges = make_judge_single(args.judge_model, judge_prompts)
         play_a_match_func = play_a_match_single
         output_file = (
             f"data/{args.bench_name}/model_judgment/{args.judge_model}_single.jsonl"
@@ -240,7 +281,11 @@ if __name__ == "__main__":
         make_match_func = make_match_single
         baseline_model = None
     else:
-        judges = make_judge_pairwise(args.judge_model, judge_prompts)
+        if args.multilingual:
+            assert args.judge_file.endswith("judge_prompts_multilingual.jsonl")
+            judges = make_judge_pairwise_multilingual(args.judge_model, judge_prompts)
+        else:
+            judges = make_judge_pairwise(args.judge_model, judge_prompts)
         play_a_match_func = play_a_match_pair
         output_file = (
             f"data/{args.bench_name}/model_judgment/{args.judge_model}_pair.jsonl"
@@ -255,12 +300,16 @@ if __name__ == "__main__":
     check_data(questions, model_answers, ref_answers, models, judges)
 
     question_math = [q for q in questions if q["category"] in NEED_REF_CATS]
-    question_default = [q for q in questions if q["category"] not in NEED_REF_CATS]
+    question_default = [q for q in questions if q["category"] not in NEED_REF_CATS and q["category"] != "safety"]
+    question_safety = [q for q in questions if q["category"] not in NEED_REF_CATS and q["category"] == "safety"]
 
     # Make matches
     matches = []
     matches += make_match_func(
         question_default, models, model_answers, judges["default"], baseline_model
+    )
+    matches += make_match_func(
+        question_safety, models, model_answers, judges["safety"], baseline_model
     )
     matches += make_match_func(
         question_math,
@@ -301,7 +350,7 @@ if __name__ == "__main__":
     # Show match stats and prompt enter to continue
     print("Stats:")
     print(json.dumps(match_stat, indent=4))
-    input("Press Enter to confirm...")
+    # input("Press Enter to confirm...")
 
     # Play matches
     if args.parallel == 1:
