@@ -2,15 +2,15 @@
 
 1. Run the commands below to setup Fastchat.
 ```
-   git clone https://github.com/RishabhMaheshwary/FastChat.git
+   git clone https://github.com/ServiceNow/FastChat.git
    cd FastChat
    pip install -e ".[model_worker,llm_judge]"
 ```
-2. Add the pretrained model paths [here](https://github.com/RishabhMaheshwary/FastChat/blob/1f1733b5bd0257559c33b698987bd7b1fbe65713/fastchat/llm_judge/run_eval.sh#L22).
+2. Add the pretrained model paths [here](https://github.com/ServiceNow/FastChat/blob/f172f029820c3fb84d371d4dab55b0d5f61e3de9/fastchat/llm_judge/run_eval.sh#L22.
 
-3. Use the [`run_eval.sh`](https://github.com/RishabhMaheshwary/FastChat/blob/main/fastchat/llm_judge/run_eval.sh) script to run evaluations across all MT bench languages. 
+3. Use the [`run_eval.sh`](https://github.com/ServiceNow/FastChat/blob/main/fastchat/llm_judge/run_eval.sh) script to run evaluations across all MT bench languages. 
 
-4. The GPT-4 prompt used for multilingual evaluation is available [here](https://github.com/RishabhMaheshwary/FastChat/blob/main/fastchat/llm_judge/data/judge_prompts_multilingual.jsonl).
+4. The GPT-4 prompt used for multilingual evaluation is available [here](https://github.com/ServiceNow/FastChat/blob/main/fastchat/llm_judge/data/judge_prompts_multilingual.jsonl).
 
 
 ### Citation
@@ -26,3 +26,4 @@ eprint={2406.16783},
 archivePrefix={arXiv},
 }
 ```
+
